@@ -176,6 +176,12 @@ mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 .PRECIOUS: %.o
 
 UPROGS=\
+	$U/_sleep\
+        $U/_uptime\
+        $U/_sixfive\
+        $U/_memdump\
+        $U/_find\
+        $U/_exec\
 	$U/_cat\
 	$U/_echo\
 	$U/_forktest\

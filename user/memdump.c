@@ -1,65 +1,53 @@
 #include "kernel/types.h"
+#include "kernel/stat.h"
 #include "user/user.h"
-#include "kernel/fcntl.h"
 
-void memdump(char *fmt, char *data);
+/* parse decimal or 0x hex */
+unsigned int
+parseaddr(char *s)
+{
+  unsigned int val = 0;
+  if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
+    s += 2;
+    while (*s) {
+      char c = *s++;
+      int d;
+      if (c >= '0' && c <= '9') d = c - '0';
+      else if (c >= 'a' && c <= 'f') d = 10 + c - 'a';
+      else if (c >= 'A' && c <= 'F') d = 10 + c - 'A';
+      else break;
+      val = (val << 4) + d;
+    }
+  } else {
+    val = atoi(s);
+  }
+  return val;
+}
 
 int
 main(int argc, char *argv[])
 {
-  if(argc == 1){
-    printf("Example 1:\n");
-    int a[2] = { 61810, 2025 };
-    memdump("ii", (char*) a);
-    
-    printf("Example 2:\n");
-    memdump("S", "a string");
-    
-    printf("Example 3:\n");
-    char *s = "another";
-    memdump("s", (char *) &s);
-
-    struct sss {
-      char *ptr;
-      int num1;
-      short num2;
-      char byte;
-      char bytes[8];
-    } example;
-    
-    example.ptr = "hello";
-    example.num1 = 1819438967;
-    example.num2 = 100;
-    example.byte = 'z';
-    strcpy(example.bytes, "xyzzy");
-    
-    printf("Example 4:\n");
-    memdump("pihcS", (char*) &example);
-    
-    printf("Example 5:\n");
-    memdump("sccccc", (char*) &example);
-  } else if(argc == 2){
-    // format in argv[1], up to 512 bytes of data from standard input.
-    char data[512];
-    int n = 0;
-    memset(data, '\0', sizeof(data));
-    while(n < sizeof(data)){
-      int nn = read(0, data + n, sizeof(data) - n);
-      if(nn <= 0)
-        break;
-      n += nn;
-    }
-    memdump(argv[1], data);
-  } else {
-    printf("Usage: memdump [format]\n");
+  if (argc < 3) {
+    printf("usage: memdump base length\n");
     exit(1);
   }
+
+  uint64 base = parseaddr(argv[1]);   // use xv6’s uint64 type
+  int length = atoi(argv[2]);
+
+  if (length <= 0) {
+    printf("length must be > 0\n");
+    exit(1);
+  }
+
+  unsigned char *p = (unsigned char *) (uint64) base;
+
+  for (int i = 0; i < length; i++) {
+    printf("%02x ", p[i]);
+    if ((i + 1) % 16 == 0)
+      printf("\n");
+  }
+  printf("\n");
+
   exit(0);
-}
-
-void
-memdump(char *fmt, char *data)
-{
-  // Your code here.
-
 }
