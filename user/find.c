@@ -1,136 +1,114 @@
 #include "kernel/types.h"
 #include "kernel/stat.h"
 #include "kernel/fs.h"
-#include "user/user.h"
 #include "kernel/fcntl.h"
+#include "user/user.h"
+#include "kernel/param.h"   // <-- needed for MAXARG
 
-// Forward declaration of regex matcher
-int match(char*, char*);
+char*
+fmtname(char *path)
+{
+  static char buf[DIRSIZ+1];
+  char *p;
 
-// Find function
-void find(char *path, char *pattern) {
-    char buf[512], *p;
-    int fd;
-    struct dirent de;
-    struct stat st;
+  // find last slash
+  for(p=path+strlen(path); p >= path && *p != '/'; p--)
+    ;
+  p++;
+  if(strlen(p) >= DIRSIZ)
+    return p;
+  memmove(buf, p, strlen(p));
+  buf[strlen(p)] = 0;
+  return buf;
+}
 
-    if ((fd = open(path, O_RDONLY)) < 0) {
-        printf("find: cannot open %s\n", path);
-        return;
-    }
+void
+find(char *path, char *target, int exec_flag, char **cmd)
+{
+  char buf[512], *p;
+  int fd;
+  struct dirent de;
+  struct stat st;
 
-    if (fstat(fd, &st) < 0) {
-        printf("find: cannot stat %s\n", path);
-        close(fd);
-        return;
-    }
+  if((fd = open(path, O_RDONLY)) < 0){
+    fprintf(2, "find: cannot open %s\n", path);
+    return;
+  }
 
-    switch (st.type) {
-    case T_FILE: {
-        char *name = path + strlen(path) - 1;
-        while (name > path && *name != '/') name--;
-        if (*name == '/') name++;
-        if (match(pattern, name))
-            printf("%s\n", path);
-        break;
-    }
-
-    case T_DIR:
-        strcpy(buf, path);
-        p = buf + strlen(buf);
-        *p++ = '/';
-
-        while (read(fd, &de, sizeof(de)) == sizeof(de)) {
-            if (de.inum == 0)
-                continue;
-
-            // Extract directory entry name safely and trim trailing nulls/spaces
-            char name[DIRSIZ+1];
-            int i;
-            for(i=0; i<DIRSIZ && de.name[i] != 0; i++)
-                name[i] = de.name[i];
-            name[i] = '\0';
-
-            if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
-                continue;
-
-            // Build full path
-            memmove(p, de.name, DIRSIZ);
-            p[DIRSIZ] = '\0';
-
-            // Trim trailing nulls/spaces in buf
-            for(int j=strlen(buf)-1; j>=0; j--) {
-                if(buf[j] == 0 || buf[j] == ' ')
-                    buf[j] = '\0';
-                else
-                    break;
-            }
-
-            // Debug log
-            printf("DEBUG: Checking path: '%s', name: '%s'\n", buf, name);
-
-            if (stat(buf, &st) < 0) {
-                printf("find: cannot stat %s\n", buf);
-                continue;
-            }
-
-            if (st.type == T_DIR) {
-                find(buf, pattern);
-            } else {
-                if(match(pattern, name))
-                    printf("%s\n", buf);
-            }
-        }
-        break;
-    }
-
+  if(fstat(fd, &st) < 0){
+    fprintf(2, "find: cannot stat %s\n", path);
     close(fd);
-}
+    return;
+  }
 
-// Main function
-int main(int argc, char *argv[]) {
-    if(argc < 3){
-        printf("usage: find path regex_pattern\n");
-        exit(1);
+  switch(st.type){
+  case T_FILE:
+    if(strcmp(fmtname(path), target) == 0){
+      if(exec_flag){
+        int pid = fork();
+        if(pid == 0){
+          // child: prepare argv for exec
+          char *args[MAXARG];
+          int i = 0;
+          while(cmd[i] != 0 && i < MAXARG-1){
+            args[i] = cmd[i];
+            i++;
+          }
+          args[i++] = path;   // append filename
+          args[i] = 0;
+          exec(args[0], args);
+          fprintf(2, "find: exec %s failed\n", args[0]);
+          exit(1);
+        } else {
+          wait(0);
+        }
+      } else {
+        printf("%s\n", path);
+      }
     }
+    break;
 
-    find(argv[1], argv[2]);
-    exit(0);
+  case T_DIR:
+    if(strlen(path) + 1 + DIRSIZ + 1 > sizeof buf){
+      printf("find: path too long\n");
+      break;
+    }
+    strcpy(buf, path);
+    p = buf+strlen(buf);
+    *p++ = '/';
+    while(read(fd, &de, sizeof(de)) == sizeof(de)){
+      if(de.inum == 0)
+        continue;
+      if(strcmp(de.name, ".") == 0 || strcmp(de.name, "..") == 0)
+        continue;
+      memmove(p, de.name, DIRSIZ);
+      p[DIRSIZ] = 0;
+      find(buf, target, exec_flag, cmd);
+    }
+    break;
+  }
+  close(fd);
 }
 
-// =========================
-// Regex matcher (from grep.c)
-// =========================
+int
+main(int argc, char *argv[])
+{
+  if(argc < 3){
+    fprintf(2, "usage: find path filename [-exec cmd]\n");
+    exit(1);
+  }
 
-int matchhere(char*, char*);
-int matchstar(int, char*, char*);
+  int exec_flag = 0;
+  char **cmd = 0;
 
-int match(char *re, char *text) {
-    if(re[0] == '^')
-        return matchhere(re+1, text);
-    do {
-        if(matchhere(re, text))
-            return 1;
-    } while(*text++ != '\0');
-    return 0;
-}
+  for(int i = 3; i < argc; i++){
+    if(strcmp(argv[i], "-exec") == 0){
+      exec_flag = 1;
+      cmd = &argv[i+1]; // command starts after -exec
+      break;
+    }
+  }
 
-int matchhere(char *re, char *text) {
-    if(re[0] == '\0')
-        return 1;
-    if(re[1] == '*')
-        return matchstar(re[0], re+2, text);
-    if(re[0] == '$' && re[1] == '\0')
-        return *text == '\0';
-    if(*text != '\0' && (re[0] == '.' || re[0] == *text))
-        return matchhere(re+1, text+1);
-    return 0;
-}
-
-int matchstar(int c, char *re, char *text) {
-    do {
-        if(matchhere(re, text))
-            return 1;
-    } while(*text != '\0' && (*text++ == c || c == '.'));
-    return 0;
+  find(argv[1], argv[2], exec_flag, cmd);
+  exit(0);
 }
