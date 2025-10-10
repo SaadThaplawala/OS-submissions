@@ -222,6 +222,18 @@ UPROGS += \
 	$U/_stats
 endif
 
+
+ifeq ($(LAB),syscall)
+UPROGS += \
+	$U/_attack\
+	$U/_secret
+endif
+
+ifeq ($(LAB),lock)
+UPROGS += \
+	$U/_stats
+endif
+
 ifeq ($(LAB),traps)
 UPROGS += \
 	$U/_call\
@@ -289,9 +301,7 @@ ifeq ($(LAB),util)
 	UEXTRA += user/sixfive.txt
 	UPROGS += $U/_memdump
 endif
-ifeq ($(LAB),syscall)
-	UEXTRA += user/exec.sh
-endif
+
 
 fs.img: mkfs/mkfs README $(UEXTRA) $(UPROGS)
 	mkfs/mkfs fs.img README $(UEXTRA) $(UPROGS)
