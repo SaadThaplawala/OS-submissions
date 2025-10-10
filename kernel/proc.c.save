@@ -86,7 +86,7 @@ myproc(void)
   struct cpu *c = mycpu();
   struct proc *p = c->proc;
   pop_off();
-  return p;
+ https://www.canva.com/design/DAG0bcAmcw8/KJqbGuDAEdo9UdLo638YiQ/edit?utm_content=DAG0bcAmcw8&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton return p;
 }
 
 int
@@ -123,8 +123,6 @@ allocproc(void)
 
 found:
   p->pid = allocpid();
-  p->deny_mask = 0;
-  p->allow_path[0] = 0;
   p->state = USED;
 
   // Allocate a trapframe page.
@@ -171,9 +169,6 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
-
-  p->deny_mask = 0; 
-  p->allow_path[0] = 0; 
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -283,10 +278,6 @@ kfork(void)
 
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;
-  
-  // Get sandbox settings from parent
-  np->deny_mask = p->deny_mask; 
-  safestrcpy(np->allow_path, p->allow_path, sizeof(np->allow_path)); 
 
   // increment reference counts on open file descriptors.
   for(i = 0; i < NOFILE; i++)
