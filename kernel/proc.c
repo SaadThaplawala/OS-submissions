@@ -131,7 +131,7 @@ found:
     release(&p->lock);
     return 0;
   }
-  // ADDED BY SAFEGUARD: Allocate a USYSCALL page.
+  
   if ((p->usyscall = (struct usyscall*)kalloc()) == 0) {
     freeproc(p);
     release(&p->lock);
@@ -168,7 +168,7 @@ freeproc(struct proc *p)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
 
-  // ADDED BY SAFEGUARD
+
   if(p->usyscall)
     kfree((void*)p->usyscall);
 
@@ -218,7 +218,7 @@ proc_pagetable(struct proc *p)
     return 0;
   }
   
-  // ADDED BY SAFEGUARD: map the usyscall page just below the trapframe page
+  // Map the usyscall page just below the trapframe page
   if(mappages(pagetable, USYSCALL, PGSIZE, (uint64)(p->usyscall), PTE_R | PTE_U) < 0){
     uvmunmap(pagetable, TRAPFRAME, 1, 0);
     uvmunmap(pagetable, TRAMPOLINE, 1, 0);
@@ -238,7 +238,7 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
 
-  uvmunmap(pagetable, USYSCALL, 1, 0); // ADDED BY SAFEGUARD
+  uvmunmap(pagetable, USYSCALL, 1, 0);
 
   uvmfree(pagetable, sz);
 }
@@ -301,18 +301,18 @@ kfork(void)
   }
   np->sz = p->sz;
 
- // ADDED BY SAFEGUARD: If parent has a usyscall page, copy it to child
+ // If parent has a usyscall page, copy it to child
   np->trapframe->epc = p->trapframe->epc;
   np->trapframe->sp = p->trapframe->sp;
 
-  // ADDED BY SAFEGUARD: If parent has a usyscall page, copy it to child
+  //If parent has a usyscall page, copy it to child
   if (np->usyscall)
     np->usyscall->pid = np->pid;
 
-  // ADDED BY SAFEGUARD: unmap the usyscall page from child (it will be remapped below)
+  //Unmap the usyscall page from child (it will be remapped below)
   uvmunmap(np->pagetable, USYSCALL, 1, 0);
 
-  // ADDED BY SAFEGUARD: map the usyscall page just below the trapframe page
+  //Map the usyscall page just below the trapframe page
   if (mappages(np->pagetable, USYSCALL, PGSIZE, (uint64)(np->usyscall), PTE_R | PTE_U) < 0) {
     freeproc(np);
     release(&np->lock);

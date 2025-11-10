@@ -10,14 +10,13 @@
 #include "defs.h"
 #include "memlayout.h"
 
-// ADDED BY SAFEGUARD
 static void *super_free_list[N_SUPERPAGES];
 static int super_free_cnt = 0;
 
 
-// ADDED BY SAFEGUARD, slight name change to avoid conflict
+
 void freerange(void *vstart, void *vend);
-// void freerange(void *pa_start, void *pa_end);
+
 
 extern char end[]; // first address after kernel.
                    // defined by kernel.ld.
@@ -38,7 +37,7 @@ kinit()
   freerange(end, (void*)PHYSTOP);
 }
 
-// ADDED BY SAFEGUARD
+
 void
 freerange(void *vstart, void *vend)
 {
@@ -56,16 +55,6 @@ freerange(void *vstart, void *vend)
   }
 }
 
-// void
-// freerange(void *pa_start, void *pa_end)
-// {
-//   char *p;
-//   p = (char*)PGROUNDUP((uint64)pa_start);
-//   for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
-//     kfree(p);
-// }
-
-// ADDED BY SAFEGUARD
 void *
 superalloc(void)
 {
@@ -74,7 +63,7 @@ superalloc(void)
   return super_free_list[--super_free_cnt];
 }
 
-// ADDED BY SAFEGUARD
+
 void
 superfree(void *pa)
 {

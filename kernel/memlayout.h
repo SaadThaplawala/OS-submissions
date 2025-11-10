@@ -75,7 +75,6 @@ struct usyscall {
 
 #endif  // LAB_PGTBL
 
-// ADDED BY SAFEGUARD
 #define SUPERPAGE_SIZE (2 * 1024 * 1024)  
 #define SUPERPAGE_NPAGES 512  
 #define N_SUPERPAGES 8

@@ -9,17 +9,7 @@
 #include "fs.h"
 #include "vm.h"
 
-// I walk a lonely road
-// The only one that I have ever known
-// Don't know where it goes
-// But it's home to me and I walk alone 
-// I walk alone 
-// I walk this empty page
-// On the boulevard of broken codes
-// Dont know where it goes
-// But it's home to me and I walk alone
 
-// Special thanks to Juhair ameerali merchant for being there in the hard days 
 
 /*
  * the kernel's page table.
@@ -29,10 +19,10 @@ pagetable_t kernel_pagetable;
 extern char etext[];  // kernel.ld sets this to end of kernel code.
 extern char trampoline[]; // trampoline.S
 
-extern void *superalloc(void); // ADDED BY SAFEGUARD
-extern void superfree(void *); // ADDED BY SAFEGUARD
+extern void *superalloc(void);
+extern void superfree(void *);
 
-int mappages_super(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm); // ADDED BY SAFEGUARD
+int mappages_super(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm);
 
 // Make a direct-map page table for the kernel.
 pagetable_t
@@ -114,7 +104,7 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
   return &pagetable[PX(0, va)];
 }
 
-// ADDED BY SAFEGUARD
+
 static pte_t *
 walk_for_level(pagetable_t pagetable, uint64 va, int alloc, int want_level)
 {
@@ -159,7 +149,7 @@ walkaddr(pagetable_t pagetable, uint64 va)
 
 #if defined(LAB_PGTBL) || defined(SOL_MMAP) || defined(SOL_COW)
 
-// ADDED BY SAFEGUARD
+
 static void __attribute__((unused))
 _vmprint(pagetable_t pagetable, int level, uint64 va, int depth)
 {
@@ -240,7 +230,7 @@ uvmcreate()
   return pagetable;
 }
 
-// ADDED BY SAFEGUARD
+
 static int
 demote_superpage(pagetable_t pagetable, uint64 va)
 {
@@ -296,7 +286,7 @@ ismapped(pagetable_t pagetable, uint64 va)
   return 0;
 }
 
-// EDITED BY SAFEGUARD
+
 void
 uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 {
